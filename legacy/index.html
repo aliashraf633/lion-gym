@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جيم الأسد | Lion Gym</title>
+    <!-- Tailwind via CDN: fine for a prototype, replace with a build step before production (Phase 2+) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: { extend: {
+                colors: {
+                    gold: { DEFAULT: '#ff9f1a', dark: '#e08b10', light: '#ffb74d' },
+                    darkbg: '#0f0f12', cardbg: '#1a1a24', sectionbg: '#14141d'
+                },
+                fontFamily: { cairo: ['Cairo', 'sans-serif'] }
+            } }
+        }
+    </script>
+    <style>
+        [hidden] { display: none !important; }
+        body { font-family: 'Cairo', sans-serif; background-color: #0f0f12; color: #fff; }
+        body.modal-open { overflow: hidden; }
+        body.has-cart { padding-bottom: 6rem; }
+        .ltr { direction: ltr; text-align: right; }
+        :focus-visible { outline: 2px solid #ff9f1a; outline-offset: 2px; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f0f12; }
+        ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ff9f1a; }
+        .no-scrollbar { scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        @keyframes slideIn { from { transform: translateX(-100%); } to { transform: none; } }
+        .drawer-in { animation: slideIn .25s ease-out; }
+        @media (prefers-reduced-motion: reduce) { .drawer-in { animation: none; } }
+    </style>
+</head>
+<body class="bg-darkbg text-white antialiased min-h-screen flex flex-col justify-between">
+
+    <div id="liveRegion" class="sr-only" aria-live="polite"></div>
+
+    <!-- Modals -->
+    <div id="modalOverlay" hidden class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+
+        <!-- Subscription modal -->
+        <div id="subscribeModal" role="dialog" aria-modal="true" aria-labelledby="subTitle" tabindex="-1" hidden
+             class="bg-cardbg border-2 border-gold/40 rounded-2xl max-w-3xl w-full p-6 text-right relative shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
+            <button type="button" data-close="subscribe" aria-label="إغلاق النافذة" class="absolute top-4 start-4 text-gray-400 hover:text-gold text-2xl transition"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+
+            <div id="subFormView">
+                <h2 id="subTitle" class="text-2xl md:text-3xl font-extrabold text-gold mb-2 text-center"><i class="fa-solid fa-dumbbell me-2" aria-hidden="true"></i>اشتراكات جيم الأسد</h2>
+                <p class="text-gray-300 text-center text-sm mb-6">اختر الباقة المناسبة وسجّل طلب الحجز، وسنتواصل معك لتأكيده.</p>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-bold text-gray-200 mb-3"><i class="fa-solid fa-images text-gold me-2" aria-hidden="true"></i>معرض الصالة الرياضية</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=400&q=80" alt="صالة الأوزان" class="rounded-lg h-24 w-full object-cover border border-gray-800">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&w=400&q=80" alt="منطقة الكارديو" class="rounded-lg h-24 w-full object-cover border border-gray-800">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1571902943202-507ec2618e8f?auto=format&fit=crop&w=400&q=80" alt="منطقة التمرين" class="rounded-lg h-24 w-full object-cover border border-gray-800">
+                        <img loading="lazy" src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=400&q=80" alt="التدريب الخاص" class="rounded-lg h-24 w-full object-cover border border-gray-800">
+                    </div>
+                </div>
+
+                <form id="subForm" novalidate>
+                    <fieldset class="mb-6 min-w-0">
+                        <legend class="text-lg font-bold text-gray-200 mb-3"><i class="fa-solid fa-tags text-gold me-2" aria-hidden="true"></i>اختر باقة الاشتراك</legend>
+                        <div id="planOptions" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+                    </fieldset>
+
+                    <fieldset class="mb-4 min-w-0">
+                        <legend class="text-lg font-bold text-gray-200 mb-3"><i class="fa-solid fa-credit-card text-gold me-2" aria-hidden="true"></i>طريقة الدفع</legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <label class="block cursor-pointer">
+                                <input type="radio" name="pay" value="cash" class="peer sr-only" checked>
+                                <div class="p-3 border-2 border-gray-700 rounded-xl bg-sectionbg flex items-center justify-center gap-2 text-gray-300 font-bold transition hover:border-gold/60 peer-checked:border-gold peer-checked:text-gold peer-focus-visible:ring-2 peer-focus-visible:ring-gold">
+                                    <i class="fa-solid fa-money-bill-wave" aria-hidden="true"></i> دفع كاش عند الحضور
+                                </div>
+                            </label>
+                            <label class="block cursor-pointer">
+                                <input type="radio" name="pay" value="online" class="peer sr-only">
+                                <div class="p-3 border-2 border-gray-700 rounded-xl bg-sectionbg flex items-center justify-center gap-2 text-gray-300 font-bold transition hover:border-gold/60 peer-checked:border-gold peer-checked:text-gold peer-focus-visible:ring-2 peer-focus-visible:ring-gold">
+                                    <i class="fa-solid fa-credit-card" aria-hidden="true"></i> دفع إلكتروني (تجريبي)
+                                </div>
+                            </label>
+                        </div>
+                    </fieldset>
+                    <div id="onlineNote" hidden class="bg-darkbg border border-gold/30 rounded-xl p-3 mb-4 text-xs text-gray-300 leading-relaxed">
+                        <i class="fa-solid fa-circle-info text-gold me-1" aria-hidden="true"></i>
+                        الدفع الإلكتروني غير مفعّل في هذه النسخة التجريبية، ولا نجمع أي بيانات بنكية. سيتم تسجيل طلبك والدفع عند الحضور.
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label for="subName" class="block text-xs text-gray-300 mb-1">الاسم الكامل</label>
+                            <input type="text" id="subName" autocomplete="name" maxlength="50" aria-describedby="subNameErr" placeholder="محمد أحمد" class="w-full bg-sectionbg border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:border-gold outline-none aria-[invalid=true]:border-red-500">
+                            <p id="subNameErr" class="text-xs text-red-400 mt-1 min-h-[1rem]"></p>
+                        </div>
+                        <div>
+                            <label for="subPhone" class="block text-xs text-gray-300 mb-1">رقم الموبايل</label>
+                            <input type="tel" id="subPhone" inputmode="tel" autocomplete="tel" maxlength="16" aria-describedby="subPhoneErr" placeholder="01012345678" class="ltr w-full bg-sectionbg border border-gray-700 rounded-lg p-2.5 text-sm text-white focus:border-gold outline-none aria-[invalid=true]:border-red-500">
+                            <p id="subPhoneErr" class="text-xs text-red-400 mt-1 min-h-[1rem]"></p>
+                        </div>
+                    </div>
+
+                    <div class="bg-sectionbg p-4 rounded-xl border border-gray-800 flex flex-wrap gap-3 justify-between items-center">
+                        <div>
+                            <span class="text-xs text-gray-300 block">المبلغ الإجمالي:</span>
+                            <span id="selectedPlanPrice" class="text-2xl font-black text-gold">1000 ج.م</span>
+                        </div>
+                        <button type="submit" class="bg-gold hover:bg-gold-dark text-black font-extrabold px-6 py-3 rounded-xl transition shadow-lg flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check" aria-hidden="true"></i> تسجيل طلب الحجز
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-gray-400 mt-3 text-center">نسخة تجريبية: لا يتم إرسال أي بيانات أو إجراء أي دفع حقيقي.</p>
+                </form>
+            </div>
+
+            <div id="subDoneView" hidden class="text-center py-8">
+                <div class="text-5xl mb-3" aria-hidden="true">✅</div>
+                <h2 id="subDoneTitle" tabindex="-1" class="text-2xl font-extrabold text-gold mb-3">تم تسجيل طلب الحجز</h2>
+                <p id="subDoneText" class="text-gray-300 text-sm leading-loose"></p>
+                <p class="text-[11px] text-gray-400 mt-4">نسخة تجريبية: لم يتم إرسال أي بيانات.</p>
+                <button type="button" data-close="subscribe" class="mt-6 bg-gold hover:bg-gold-dark text-black font-extrabold px-8 py-3 rounded-xl transition">إغلاق</button>
+            </div>
+        </div>
+
+        <!-- Store modal -->
+        <div id="storeModal" role="dialog" aria-modal="true" aria-labelledby="storeTitle" tabindex="-1" hidden
+             class="bg-cardbg border-2 border-gold/40 rounded-2xl max-w-5xl w-full p-6 text-right relative shadow-2xl my-6 mb-28 max-h-[92vh] overflow-y-auto">
+            <button type="button" data-close="store" aria-label="إغلاق النافذة" class="absolute top-4 start-4 text-gray-400 hover:text-gold text-2xl transition"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+
+            <div class="flex flex-col md:flex-row justify-between items-center border-b border-gray-800 pb-4 mb-6 gap-4 pt-6 md:pt-0 md:ps-10">
+                <div>
+                    <h2 id="storeTitle" class="text-2xl font-extrabold text-gold flex items-center gap-2"><i class="fa-solid fa-store" aria-hidden="true"></i> متجر المكملات الغذائية الأصلي</h2>
+                    <p class="text-xs text-gray-300 mt-1">منتجات أصلية ومضمونة 100% مع ضمان أعلى جودة في السوق</p>
+                </div>
+                <div class="w-full md:w-auto">
+                    <label for="storeSearch" class="sr-only">ابحث في المنتجات</label>
+                    <input type="search" id="storeSearch" placeholder="ابحث عن بروتين، كرياتين..." class="bg-sectionbg border border-gray-700 text-xs rounded-xl p-2.5 w-full md:w-60 text-white focus:border-gold outline-none">
+                </div>
+            </div>
+
+            <div id="catTabs" class="flex gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar" role="group" aria-label="تصنيفات المنتجات">
+                <button type="button" data-cat="all" class="cat-btn">الكل</button>
+                <button type="button" data-cat="protein" class="cat-btn">بروتين (Protein)</button>
+                <button type="button" data-cat="creatine" class="cat-btn">كرياتين (Creatine)</button>
+                <button type="button" data-cat="preworkout" class="cat-btn">باور (Pre-Workout)</button>
+                <button type="button" data-cat="vitamins" class="cat-btn">فيتامينات وصحة</button>
+            </div>
+
+            <div id="productsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+    </div>
+
+    <!-- Cart drawer -->
+    <div id="cartLayer" hidden class="fixed inset-0 z-[60]">
+        <div data-close="cart" class="absolute inset-0 bg-black/60"></div>
+        <aside id="cartPanel" role="dialog" aria-modal="true" aria-labelledby="cartTitle" tabindex="-1"
+               class="drawer-in absolute inset-y-0 left-0 w-full max-w-sm bg-cardbg border-e-2 border-gold/40 shadow-2xl flex flex-col text-right">
+            <div class="flex items-center justify-between p-4 border-b border-gray-800">
+                <h2 id="cartTitle" class="text-lg font-extrabold text-gold"><i class="fa-solid fa-cart-shopping me-2" aria-hidden="true"></i>عربة التسوق</h2>
+                <button type="button" data-close="cart" aria-label="إغلاق العربة" class="text-gray-400 hover:text-gold text-2xl transition"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            </div>
+
+            <div id="cartMain" class="flex-1 flex flex-col min-h-0">
+                <ul id="cartList" class="flex-1 overflow-y-auto p-4 space-y-3"></ul>
+                <div id="cartFooter" class="p-4 border-t border-gray-800 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-300">الإجمالي</span>
+                        <span id="cartDrawerTotal" class="text-xl font-black text-gold">0 ج.م</span>
+                    </div>
+                    <button type="button" data-act="checkout" class="w-full bg-gold hover:bg-gold-dark text-black font-extrabold py-3 rounded-xl transition">إتمام الطلب (تجريبي)</button>
+                    <button type="button" data-act="clear" class="w-full text-xs text-gray-300 hover:text-red-400 py-2 transition">إفراغ العربة</button>
+                </div>
+            </div>
+
+            <div id="cartDone" hidden class="flex-1 overflow-y-auto p-6 text-center">
+                <div class="text-5xl mb-3" aria-hidden="true">🛒</div>
+                <h3 id="cartDoneTitle" tabindex="-1" class="text-xl font-extrabold text-gold mb-3">تم تسجيل طلبك التجريبي</h3>
+                <ul id="cartDoneList" class="text-sm text-gray-300 space-y-1 mb-3 text-right"></ul>
+                <p class="font-bold text-gold mb-3">الإجمالي: <span id="cartDoneTotal"></span></p>
+                <p class="text-[11px] text-gray-400 mb-5">نسخة تجريبية: لم يتم إرسال الطلب ولا إجراء أي دفع.</p>
+                <button type="button" data-close="cart" class="bg-gold hover:bg-gold-dark text-black font-extrabold px-8 py-3 rounded-xl transition">إغلاق</button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Header -->
+    <header class="sticky top-0 bg-darkbg/90 backdrop-blur-md border-b border-gray-800 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-gold text-black p-2 rounded-xl font-black text-xl flex items-center justify-center w-10 h-10 shadow-lg shadow-gold/20" aria-hidden="true">🦁</div>
+                <div>
+                    <p class="text-xl font-black text-gold tracking-wide">جيم الأسد</p>
+                    <span class="text-[10px] text-gray-400 block -mt-1 tracking-widest uppercase">LION GYM &amp; FITNESS</span>
+                </div>
+            </div>
+            <nav class="flex items-center gap-2 md:gap-3" aria-label="التنقل الرئيسي">
+                <button type="button" id="btnStore" class="bg-sectionbg hover:bg-gray-800 text-gold border border-gold/30 font-bold text-xs md:text-sm px-3 md:px-4 py-2 rounded-xl transition flex items-center gap-2">
+                    <i class="fa-solid fa-store" aria-hidden="true"></i> المتجر
+                </button>
+                <button type="button" id="btnCart" aria-label="عرض العربة" class="bg-sectionbg hover:bg-gray-800 text-gold border border-gold/30 font-bold text-xs md:text-sm px-3 md:px-4 py-2 rounded-xl transition flex items-center gap-2">
+                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> <span id="navCartBadge" class="bg-gold text-black text-[10px] px-1.5 py-0.5 rounded-full font-black">0</span>
+                </button>
+                <button type="button" data-open="subscribe" class="bg-gold hover:bg-gold-dark text-black font-extrabold text-xs md:text-sm px-4 md:px-5 py-2 rounded-xl transition shadow-lg shadow-gold/20 flex items-center gap-1">
+                    <i class="fa-solid fa-bolt" aria-hidden="true"></i> اشترك الآن
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+    <!-- Hero -->
+    <section class="relative py-20 px-4 bg-gradient-to-b from-darkbg via-sectionbg to-darkbg border-b border-gray-800 overflow-hidden">
+        <div class="absolute -top-24 -end-24 w-96 h-96 bg-gold/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="max-w-5xl mx-auto text-center relative z-10">
+            <span class="inline-block bg-gold/10 text-gold border border-gold/30 text-xs px-4 py-1.5 rounded-full font-bold mb-4">🔥 صالة رياضية متكاملة للرجال والسيدات</span>
+            <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-6">
+                اصنع جسم الأحلام مع <span class="text-gold underline decoration-gold/40 decoration-4">وحوش الأسد</span>
+            </h1>
+            <p class="text-gray-300 text-base md:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
+                معدات وأجهزة عالمية حديثة، خطط تغذية مخصصة، وإشراف أفضل المدربين المحترفين للوصول إلى هدفك في أسرع وقت.
+            </p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button type="button" data-open="subscribe" class="bg-gold hover:bg-gold-dark text-black font-extrabold text-base px-8 py-3.5 rounded-xl transition shadow-xl shadow-gold/20 flex items-center gap-2">
+                    <i class="fa-solid fa-dumbbell" aria-hidden="true"></i> ابدأ رحلتك الآن
+                </button>
+                <button type="button" data-open="store" class="bg-sectionbg hover:bg-gray-800 text-white border border-gray-700 font-bold text-base px-8 py-3.5 rounded-xl transition flex items-center gap-2">
+                    <i class="fa-solid fa-bottle-droplet text-gold" aria-hidden="true"></i> تصفح متجر المكملات
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Counters -->
+    <section class="py-10 bg-sectionbg border-b border-gray-800" aria-label="أرقام الصالة">
+        <div class="max-w-5xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            <div class="p-4 bg-cardbg rounded-2xl border border-gray-800">
+                <div class="text-gold text-3xl font-black mb-1"><span id="counter1">0</span>+</div>
+                <div class="text-gray-300 text-sm font-semibold">مشترك نشط ومستمر</div>
+            </div>
+            <div class="p-4 bg-cardbg rounded-2xl border border-gray-800">
+                <div class="text-gold text-3xl font-black mb-1"><span id="counter2">0</span>+</div>
+                <div class="text-gray-300 text-sm font-semibold">مدرب دولي معتمد</div>
+            </div>
+            <div class="p-4 bg-cardbg rounded-2xl border border-gray-800">
+                <div class="text-gold text-3xl font-black mb-1"><span id="counter3">0</span>+</div>
+                <div class="text-gray-300 text-sm font-semibold">بطولة محلية ودولية</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Success stories -->
+    <section class="py-16 px-4 max-w-6xl mx-auto">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-extrabold text-gold mb-3 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-fire text-red-500" aria-hidden="true"></i> قصص نجاح أبطال الجيم
+            </h2>
+            <p class="text-gray-300 text-sm">نماذج لنتائج يحققها المشتركون بالالتزام والتوجيه الصحيح</p>
+            <p class="text-gray-400 text-xs mt-1">الصور توضيحية، والأسماء والنتائج لأغراض العرض التجريبي.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <article class="bg-cardbg rounded-2xl border border-gray-800 overflow-hidden hover:border-gold/50 transition">
+                <div class="relative h-64 overflow-hidden bg-darkbg">
+                    <img loading="lazy" src="https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=800&q=80" alt="رياضي بعد برنامج تنشيف" class="w-full h-full object-cover">
+                    <span class="absolute top-3 start-3 bg-red-600 text-white font-bold text-xs px-3 py-1 rounded-full">تنشيف ودهون أقل</span>
+                </div>
+                <div class="p-6">
+                    <h3 class="text-xl font-bold text-white mb-2">الكابتن أحمد مجدي (خسارة 18 كجم)</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed mb-4">
+                        "خلال 5 شهور مع برنامج التغذية الخاص بجيم الأسد، قدرت أنزل نسبة الدهون من 26% لـ 11% وزودت الكتلة العضلية بشكل ملحوظ."
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gold font-semibold pt-3 border-t border-gray-800">
+                        <span><i class="fa-solid fa-clock me-1" aria-hidden="true"></i> المدة: 5 شهور</span>
+                        <span><i class="fa-solid fa-dumbbell me-1" aria-hidden="true"></i> البرنامج: التنشيف الذكي</span>
+                    </div>
+                </div>
+            </article>
+
+            <article class="bg-cardbg rounded-2xl border border-gray-800 overflow-hidden hover:border-gold/50 transition">
+                <div class="relative h-64 overflow-hidden bg-darkbg">
+                    <img loading="lazy" src="https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?auto=format&fit=crop&w=800&q=80" alt="رياضي بعد برنامج تضخيم" class="w-full h-full object-cover">
+                    <span class="absolute top-3 start-3 bg-green-700 text-white font-bold text-xs px-3 py-1 rounded-full">تضخيم عضل صافي</span>
+                </div>
+                <div class="p-6">
+                    <h3 class="text-xl font-bold text-white mb-2">محمود إبراهيم (زيادة 12 كجم عضل)</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed mb-4">
+                        "كنت بعاني من النحافة المفرطة، وبفضل التمارين الشديدة والمكملات الأصلية من المتجر قدرت أبني قوام رياضي قوي جداً."
+                    </p>
+                    <div class="flex items-center justify-between text-xs text-gold font-semibold pt-3 border-t border-gray-800">
+                        <span><i class="fa-solid fa-clock me-1" aria-hidden="true"></i> المدة: 6 شهور</span>
+                        <span><i class="fa-solid fa-dumbbell me-1" aria-hidden="true"></i> البرنامج: الضخامة العضلية</span>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- Calculator + schedule -->
+    <section class="py-16 bg-sectionbg border-t border-b border-gray-800 px-4">
+        <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10">
+
+            <div class="bg-cardbg p-6 rounded-2xl border border-gray-800">
+                <h2 class="text-xl font-bold text-gold mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-calculator" aria-hidden="true"></i> حاسبة السعرات اليومية
+                </h2>
+                <p class="text-gray-300 text-xs mb-5">تقدير احتياجك اليومي بمعادلة Mifflin-St Jeor حسب نشاطك وهدفك.</p>
+
+                <form id="calcForm" novalidate class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="calcSex" class="block text-xs text-gray-300 mb-1">الجنس</label>
+                            <select id="calcSex" class="w-full bg-sectionbg border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-gold outline-none">
+                                <option value="male">ذكر</option>
+                                <option value="female">أنثى</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="calcAge" class="block text-xs text-gray-300 mb-1">العمر (15–80)</label>
+                            <input type="number" id="calcAge" min="15" max="80" inputmode="numeric" placeholder="25" class="w-full bg-sectionbg border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-gold outline-none">
+                        </div>
+                        <div>
+                            <label for="calcHeight" class="block text-xs text-gray-300 mb-1">الطول بالسم (120–230)</label>
+                            <input type="number" id="calcHeight" min="120" max="230" inputmode="numeric" placeholder="175" class="w-full bg-sectionbg border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-gold outline-none">
+                        </div>
+                        <div>
+                            <label for="calcWeight" class="block text-xs text-gray-300 mb-1">الوزن بالكجم (30–250)</label>
+                            <input type="number" id="calcWeight" min="30" max="250" step="0.1" inputmode="decimal" placeholder="75" class="w-full bg-sectionbg border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-gold outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="calcActivity" class="block text-xs text-gray-300 mb-1">مستوى النشاط</label>
+                        <select id="calcActivity" class="w-full bg-sectionbg border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-gold outline-none">
+                            <option value="1.2">خامل (بدون تمارين)</option>
+                            <option value="1.375">خفيف (1–3 أيام أسبوعياً)</option>
+                            <option value="1.55" selected>متوسط (3–5 أيام أسبوعياً)</option>
+                            <option value="1.725">عالٍ (6–7 أيام أسبوعياً)</option>
+                            <option value="1.9">شديد (تمارين مكثفة + عمل بدني)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="calcGoal" class="block text-xs text-gray-300 mb-1">الهدف الرياضي</label>
+                        <select id="calcGoal" class="w-full bg-sectionbg border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-gold outline-none">
+                            <option value="maintain">الحفاظ على الوزن</option>
+                            <option value="cut">خسارة الدهون (تنشيف)</option>
+                            <option value="bulk">زيادة عضلات (تضخيم)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full bg-gold hover:bg-gold-dark text-black font-extrabold py-3 rounded-xl transition">احسب السعرات الآن</button>
+                    <div id="calcResult" role="status" hidden class="p-4 bg-darkbg border border-gold/30 rounded-xl text-center text-sm text-gray-200 leading-loose"></div>
+                    <p class="text-[11px] text-gray-400 leading-relaxed">
+                        <i class="fa-solid fa-triangle-exclamation text-gold me-1" aria-hidden="true"></i>
+                        النتيجة تقدير عام وليست نصيحة طبية. استشر طبيباً أو أخصائي تغذية قبل تغيير نظامك الغذائي، خصوصاً مع الأمراض المزمنة أو الحمل.
+                    </p>
+                </form>
+            </div>
+
+            <div class="bg-cardbg p-6 rounded-2xl border border-gray-800 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-gold mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-days" aria-hidden="true"></i> مواعيد العمل بالصالة
+                    </h2>
+                    <p class="text-gray-300 text-xs mb-6">الجيم مفتوح طوال أيام الأسبوع لتلبية جميع المواعيد</p>
+                    <div class="space-y-3">
+                        <div class="p-3 bg-sectionbg rounded-xl border border-gray-800 flex justify-between items-center gap-2">
+                            <div>
+                                <span class="font-bold text-white block text-sm">فترة السيدات 👩</span>
+                                <span class="text-xs text-gray-300">السبت - الإثنين - الأربعاء</span>
+                            </div>
+                            <span class="text-xs bg-pink-500/10 text-pink-300 px-3 py-1 rounded-full border border-pink-500/20 whitespace-nowrap">10:00 ص - 2:00 م</span>
+                        </div>
+                        <div class="p-3 bg-sectionbg rounded-xl border border-gray-800 flex justify-between items-center gap-2">
+                            <div>
+                                <span class="font-bold text-white block text-sm">فترة الرجال والشباب 👨</span>
+                                <span class="text-xs text-gray-300">طوال أيام الأسبوع</span>
+                            </div>
+                            <span class="text-xs bg-gold/10 text-gold px-3 py-1 rounded-full border border-gold/20 whitespace-nowrap">3:00 م - 1:00 ص</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 pt-4 border-t border-gray-800 text-xs text-gray-300 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-gold" aria-hidden="true"></i> متواجدون دائماً حتى في العطلات الرسمية!
+                </div>
+            </div>
+        </div>
+    </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-darkbg py-10 border-t border-gray-800 text-right">
+        <div class="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+                <h2 class="text-lg font-bold text-gold mb-3">جيم الأسد | Lion Gym</h2>
+                <p class="text-xs text-gray-300 leading-relaxed">منظومة رياضية متكاملة لتقديم أفضل تجربة تدريبية وبناء أجسام محترفة وفق أحدث المعايير العلمية.</p>
+            </div>
+            <div>
+                <h3 class="text-sm font-bold text-white mb-3">تواصل معنا</h3>
+                <ul class="text-xs text-gray-300 space-y-2">
+                    <li><i class="fa-solid fa-phone text-gold me-2" aria-hidden="true"></i> <span class="ltr inline-block">01000000000</span></li>
+                    <li><i class="fa-solid fa-location-dot text-gold me-2" aria-hidden="true"></i> القاهرة - شارع الجيم الرئيسي</li>
+                    <li><i class="fa-solid fa-clock text-gold me-2" aria-hidden="true"></i> يومياً من 10 صباحاً حتى 1 صباحاً</li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="text-sm font-bold text-white mb-3">روابط سريعة</h3>
+                <div class="flex gap-3">
+                    <button type="button" data-open="subscribe" class="text-xs text-gold hover:underline">الاشتراكات</button>
+                    <span class="text-gray-600" aria-hidden="true">|</span>
+                    <button type="button" data-open="store" class="text-xs text-gold hover:underline">المتجر</button>
+                </div>
+            </div>
+        </div>
+        <div class="text-center text-[11px] text-gray-400 mt-8 pt-4 border-t border-gray-900 px-4">
+            جميع الحقوق محفوظة © 2026 جيم الأسد Lion Gym · موقع تجريبي لأغراض العرض
+        </div>
+    </footer>
+
+    <!-- Floating cart bar -->
+    <div id="floatingCartBar" hidden class="fixed bottom-4 inset-x-4 max-w-md mx-auto bg-cardbg border-2 border-gold rounded-2xl p-4 shadow-2xl z-[55] flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="bg-gold text-black p-2 rounded-xl text-lg font-black" aria-hidden="true"><i class="fa-solid fa-cart-shopping"></i></div>
+            <div>
+                <div class="text-xs text-gray-300">عربة التسوق (<span id="cartCount">0</span> منتج)</div>
+                <div class="text-lg font-black text-gold" id="cartTotalPrice">0 ج.م</div>
+            </div>
+        </div>
+        <button type="button" id="btnFloatCart" class="bg-gold hover:bg-gold-dark text-black font-extrabold text-xs px-4 py-2.5 rounded-xl transition">
+            عرض العربة <i class="fa-solid fa-arrow-left ms-1" aria-hidden="true"></i>
+        </button>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+        const $ = id => document.getElementById(id);
+        const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const money = n => n.toLocaleString('en-US') + ' ج.م';
+        const announce = msg => { const r = $('liveRegion'); r.textContent = ''; setTimeout(() => r.textContent = msg, 50); };
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // ---------- Data ----------
+        const products = [
+            { id: 1, name: "واي بروتين جولد ستاندرد 2.2 كجم", category: "protein", price: 2450, oldPrice: 2800, rating: 5, image: "https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?auto=format&fit=crop&w=400&q=80", desc: "بروتين سريع الامتصاص لبناء العضل الصافي" },
+            { id: 2, name: "كرياتين ميكرونايزد نقي 300 جرام", category: "creatine", price: 680, oldPrice: 800, rating: 5, image: "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?auto=format&fit=crop&w=400&q=80", desc: "زيادة القوة وحجم العضلات ومخزون الماء داخل العضلة" },
+            { id: 3, name: "سي فور C4 Pre-Workout باور", category: "preworkout", price: 950, oldPrice: 1100, rating: 4, image: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=400&q=80", desc: "طاقة انفجارية وتركيز عالٍ أثناء التمرين" },
+            { id: 4, name: "إيزو 100 صفر دهون وسكر 2 كجم", category: "protein", price: 2900, oldPrice: 3200, rating: 5, image: "https://images.unsplash.com/photo-1594381898411-846e7d193883?auto=format&fit=crop&w=400&q=80", desc: "أنقى صور البروتين المعزول لمرحلة التنشيف" },
+            { id: 5, name: "أوميجا 3 تركيز عالٍ 100 كبسولة", category: "vitamins", price: 380, oldPrice: 450, rating: 4, image: "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?auto=format&fit=crop&w=400&q=80", desc: "دعم صحة المفاصل والقلب والتركيز" },
+            { id: 6, name: "ملتي فيتامين دايلي سبورت", category: "vitamins", price: 420, oldPrice: 500, rating: 5, image: "https://images.unsplash.com/photo-1550572017-edd951b55104?auto=format&fit=crop&w=400&q=80", desc: "فيتامينات ومعادن أساسية للرياضيين" }
+        ];
+        const plans = [
+            { id: 'm1', name: 'اشتراك شهري', badge: 'شهري', cls: 'bg-gray-700 text-gray-100', price: 400, perks: ['استخدام كلي للأجهزة', 'متابعة أسبوعية'] },
+            { id: 'm3', name: '3 شهور', badge: 'الأكثر طلباً 🔥', cls: 'bg-gold text-black font-bold', price: 1000, perks: ['توفير 200 جنيه', 'حصة تدريب شخصي مجاناً'] },
+            { id: 'y1', name: 'اشتراك سنوي', badge: 'VIP', cls: 'bg-purple-600 text-white', price: 3500, perks: ['خصم المكملات 15%', 'خزانة خاصة مجاناً'] }
+        ];
+
+        // ---------- Dialog manager (modal, focus trap, Esc, scroll lock) ----------
+        const dlg = {
+            subscribe: { root: 'modalOverlay', panel: 'subscribeModal' },
+            store: { root: 'modalOverlay', panel: 'storeModal' },
+            cart: { root: 'cartLayer', panel: 'cartPanel' }
+        };
+        let stack = [];
+        const focusables = p => [...p.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])')]
+            .filter(e => !e.closest('[hidden]'));
+
+        function openDialog(name, opener) {
+            if (name !== 'cart') {
+                stack = stack.filter(d => d.name === 'cart' || ($(dlg[d.name].panel).hidden = true, false));
+            }
+            const d = dlg[name];
+            $(d.root).hidden = false;
+            $(d.panel).hidden = false;
+            stack.push({ name, opener: opener || document.activeElement });
+            document.body.classList.add('modal-open');
+            const f = focusables($(d.panel));
+            (f[0] || $(d.panel)).focus();
+        }
+        function closeDialog(name) {
+            const i = stack.findIndex(d => d.name === name);
+            if (i < 0) return;
+            const opener = stack.splice(i, 1)[0].opener;
+            const d = dlg[name];
+            $(d.panel).hidden = true;
+            if (!stack.some(s => dlg[s.name].root === d.root)) $(d.root).hidden = true;
+            if (!stack.length) document.body.classList.remove('modal-open');
+            if (opener && document.contains(opener) && !opener.closest('[hidden]')) opener.focus();
+        }
+        document.addEventListener('keydown', e => {
+            const top = stack[stack.length - 1];
+            if (!top) return;
+            if (e.key === 'Escape') { e.preventDefault(); closeDialog(top.name); return; }
+            if (e.key !== 'Tab') return;
+            const panel = $(dlg[top.name].panel), f = focusables(panel);
+            if (!f.length) { e.preventDefault(); panel.focus(); return; }
+            const first = f[0], last = f[f.length - 1];
+            if (!panel.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+            else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        });
+        $('modalOverlay').addEventListener('click', e => {
+            if (e.target === $('modalOverlay')) { const top = stack[stack.length - 1]; if (top && top.name !== 'cart') closeDialog(top.name); }
+        });
+        document.addEventListener('click', e => {
+            const c = e.target.closest('[data-close]');
+            if (c) { closeDialog(c.dataset.close); return; }
+            const o = e.target.closest('[data-open]');
+            if (o) { o.dataset.open === 'subscribe' ? openSubscribe(o) : openStore(o); }
+        });
+
+        // ---------- Subscription (demo only: no card data is collected) ----------
+        const digits = s => s.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[\s-]/g, '');
+        const selectedPlan = () => plans.find(p => p.id === document.querySelector('input[name="plan"]:checked').value);
+        const payMethod = () => document.querySelector('input[name="pay"]:checked').value;
+
+        $('planOptions').innerHTML = plans.map(p => `
+            <label class="block cursor-pointer">
+                <input type="radio" name="plan" value="${p.id}" class="peer sr-only">
+                <div class="h-full border-2 border-gray-700 bg-sectionbg p-4 rounded-xl text-center relative transition hover:border-gold/60 peer-checked:border-gold peer-focus-visible:ring-2 peer-focus-visible:ring-gold">
+                    <span class="text-xs ${p.cls} px-2 py-1 rounded-full absolute top-2 end-2">${p.badge}</span>
+                    <h4 class="font-bold text-lg text-white mt-6">${p.name}</h4>
+                    <p class="text-2xl font-black text-gold my-2">${p.price} <span class="text-sm font-normal text-gray-300">ج.م</span></p>
+                    <ul class="text-xs text-gray-300 space-y-1">${p.perks.map(k => `<li>• ${k}</li>`).join('')}</ul>
+                </div>
+            </label>`).join('');
+
+        function updateSubSummary() {
+            $('selectedPlanPrice').textContent = money(selectedPlan().price);
+            $('onlineNote').hidden = payMethod() !== 'online';
+        }
+        $('subForm').addEventListener('change', updateSubSummary);
+
+        function setErr(id, msg) {
+            $(id + 'Err').textContent = msg;
+            $(id).setAttribute('aria-invalid', msg ? 'true' : 'false');
+            return !msg;
+        }
+        function openSubscribe(opener) {
+            $('subForm').reset();
+            document.querySelector('input[name="plan"][value="m3"]').checked = true;
+            ['subName', 'subPhone'].forEach(id => setErr(id, ''));
+            $('subFormView').hidden = false;
+            $('subDoneView').hidden = true;
+            updateSubSummary();
+            openDialog('subscribe', opener);
+        }
+        $('subForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const name = $('subName').value.trim();
+            const phone = digits($('subPhone').value);
+            const okName = setErr('subName', name.length < 2 ? 'يرجى إدخال اسمك (حرفان على الأقل).' : '');
+            const okPhone = setErr('subPhone', /^(\+?20|0)?1[0125]\d{8}$/.test(phone) ? '' : 'يرجى إدخال رقم موبايل مصري صحيح، مثل 01012345678.');
+            if (!okName) return $('subName').focus();
+            if (!okPhone) return $('subPhone').focus();
+            const plan = selectedPlan();
+            const online = payMethod() === 'online';
+            $('subDoneText').innerHTML =
+                `شكراً ${esc(name)}، سجّلنا طلب حجز <b class="text-white">${esc(plan.name)}</b> بمبلغ <b class="text-white">${money(plan.price)}</b>.<br>` +
+                `سنتواصل معك على <span class="ltr inline-block">${esc(phone)}</span> لتأكيد الحجز.<br>` +
+                (online ? 'الدفع الإلكتروني غير متاح حالياً، لذا يتم الدفع عند الحضور.' : 'الدفع كاش عند زيارتك الأولى للجيم.');
+            $('subFormView').hidden = true;
+            $('subDoneView').hidden = false;
+            $('subDoneTitle').focus();
+        });
+
+        // ---------- Store ----------
+        const ON = 'cat-btn bg-gold text-black px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition';
+        const OFF = 'cat-btn bg-sectionbg text-gray-300 hover:text-gold border border-gray-700 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition';
+        let cat = 'all', query = '';
+
+        function productCard(p) {
+            return `
+            <div class="bg-sectionbg border border-gray-800 rounded-2xl overflow-hidden hover:border-gold/50 transition flex flex-col justify-between">
+                <div class="relative h-44 overflow-hidden bg-darkbg">
+                    <img loading="lazy" src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.hidden=true" class="w-full h-full object-cover">
+                    <span class="absolute top-2 start-2 bg-gold text-black font-extrabold text-[10px] px-2 py-0.5 rounded-full">خصم مميز</span>
+                </div>
+                <div class="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                        <div class="text-xs text-amber-400 mb-1" role="img" aria-label="تقييم ${p.rating} من 5">${'★'.repeat(p.rating)}${'☆'.repeat(5 - p.rating)}</div>
+                        <h3 class="font-bold text-white text-sm mb-1">${esc(p.name)}</h3>
+                        <p class="text-xs text-gray-300 mb-3">${esc(p.desc)}</p>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-lg font-black text-gold">${money(p.price)}</span>
+                            <span class="text-xs text-gray-400 line-through">${money(p.oldPrice)}</span>
+                        </div>
+                        <button type="button" data-add="${p.id}" aria-label="أضف ${esc(p.name)} إلى العربة" class="w-full bg-gold/10 hover:bg-gold text-gold hover:text-black border border-gold/40 font-bold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus" aria-hidden="true"></i> أضف إلى العربة
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        }
+        function renderProducts() {
+            const list = products.filter(p => (cat === 'all' || p.category === cat) && (!query || (p.name + ' ' + p.desc).toLowerCase().includes(query)));
+            $('productsGrid').innerHTML = list.length ? list.map(productCard).join('')
+                : '<p class="col-span-full text-center text-gray-300 py-10">لا توجد منتجات مطابقة. جرّب كلمة بحث أخرى أو اختر تصنيف «الكل».</p>';
+            document.querySelectorAll('.cat-btn').forEach(b => {
+                const on = b.dataset.cat === cat;
+                b.className = on ? ON : OFF;
+                b.setAttribute('aria-pressed', on);
+            });
+        }
+        function openStore(opener) {
+            cat = 'all'; query = ''; $('storeSearch').value = '';
+            renderProducts();
+            openDialog('store', opener);
+        }
+        $('catTabs').addEventListener('click', e => {
+            const b = e.target.closest('[data-cat]');
+            if (b) { cat = b.dataset.cat; renderProducts(); $('catTabs').querySelector(`[data-cat="${cat}"]`).focus(); }
+        });
+        $('storeSearch').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); renderProducts(); });
+        $('productsGrid').addEventListener('click', e => {
+            const b = e.target.closest('[data-add]');
+            if (b) addToCart(+b.dataset.add);
+        });
+
+        // ---------- Cart (persisted in localStorage) ----------
+        const KEY = 'lionGymCart', MAX = 20;
+        let cart = [], clearArmed = false;
+
+        function loadCart() {
+            try {
+                const raw = JSON.parse(localStorage.getItem(KEY) || '[]');
+                const m = new Map();
+                if (Array.isArray(raw)) raw.forEach(i => {
+                    if (i && Number.isInteger(i.id) && Number.isInteger(i.qty) && i.qty > 0 && products.some(p => p.id === i.id))
+                        m.set(i.id, Math.min((m.get(i.id) || 0) + i.qty, MAX));
+                });
+                cart = [...m].map(([id, qty]) => ({ id, qty }));
+            } catch (err) { cart = []; }
+        }
+        function saveCart() { try { localStorage.setItem(KEY, JSON.stringify(cart)); } catch (err) { /* storage unavailable */ } }
+        const lines = () => cart.map(i => ({ p: products.find(p => p.id === i.id), qty: i.qty }));
+
+        function renderCart() {
+            const L = lines();
+            const n = L.reduce((s, l) => s + l.qty, 0);
+            const t = L.reduce((s, l) => s + l.qty * l.p.price, 0);
+            $('navCartBadge').textContent = n;
+            $('cartCount').textContent = n;
+            $('cartTotalPrice').textContent = money(t);
+            $('cartDrawerTotal').textContent = money(t);
+            $('floatingCartBar').hidden = n === 0;
+            document.body.classList.toggle('has-cart', n > 0);
+            $('cartFooter').hidden = L.length === 0;
+            $('cartList').innerHTML = L.length ? L.map(({ p, qty }) => `
+                <li class="flex gap-3 bg-sectionbg border border-gray-800 rounded-xl p-3">
+                    <img src="${esc(p.image)}" alt="" onerror="this.hidden=true" class="w-16 h-16 rounded-lg object-cover bg-darkbg shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold text-white">${esc(p.name)}</p>
+                        <p class="text-xs text-gold mb-2">${money(p.price)} × ${qty} = ${money(p.price * qty)}</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <button type="button" data-act="dec" data-id="${p.id}" ${qty <= 1 ? 'disabled' : ''} aria-label="تقليل كمية ${esc(p.name)}" class="w-8 h-8 rounded-lg border border-gray-700 hover:border-gold disabled:opacity-40 disabled:hover:border-gray-700">−</button>
+                                <span class="w-6 text-center text-sm font-bold" aria-label="الكمية">${qty}</span>
+                                <button type="button" data-act="inc" data-id="${p.id}" ${qty >= MAX ? 'disabled' : ''} aria-label="زيادة كمية ${esc(p.name)}" class="w-8 h-8 rounded-lg border border-gray-700 hover:border-gold disabled:opacity-40 disabled:hover:border-gray-700">+</button>
+                            </div>
+                            <button type="button" data-act="rm" data-id="${p.id}" aria-label="حذف ${esc(p.name)} من العربة" class="text-gray-300 hover:text-red-400 p-2"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
+                </li>`).join('')
+                : '<li class="text-center text-gray-300 text-sm py-12">عربتك فارغة. أضف منتجات من المتجر لتبدأ.</li>';
+            const clr = document.querySelector('[data-act="clear"]');
+            clr.textContent = clearArmed ? 'اضغط مرة أخرى للتأكيد' : 'إفراغ العربة';
+        }
+        function addToCart(id) {
+            const item = cart.find(i => i.id === id), p = products.find(x => x.id === id);
+            if (item) { if (item.qty >= MAX) return announce('وصلت للحد الأقصى لهذا المنتج.'); item.qty++; }
+            else cart.push({ id, qty: 1 });
+            saveCart(); renderCart();
+            announce(`تمت إضافة ${p.name} إلى العربة`);
+        }
+        function openCart(opener) {
+            clearArmed = false; renderCart();
+            $('cartMain').hidden = false; $('cartDone').hidden = true;
+            openDialog('cart', opener);
+        }
+        $('cartPanel').addEventListener('click', e => {
+            const b = e.target.closest('[data-act]');
+            if (!b) return;
+            const act = b.dataset.act, id = +b.dataset.id;
+            const item = cart.find(i => i.id === id);
+            if (act !== 'clear') clearArmed = false;
+            if (act === 'inc' && item && item.qty < MAX) item.qty++;
+            else if (act === 'dec' && item && item.qty > 1) item.qty--;
+            else if (act === 'rm') cart = cart.filter(i => i.id !== id);
+            else if (act === 'clear') {
+                if (!clearArmed) { clearArmed = true; renderCart(); return; }
+                cart = []; clearArmed = false; announce('تم إفراغ العربة');
+            }
+            else if (act === 'checkout') return checkout();
+            saveCart(); renderCart();
+            const next = $('cartList').querySelector(`[data-act="${act}"][data-id="${id}"]:not([disabled])`)
+                || $('cartList').querySelector(`[data-act="inc"][data-id="${id}"]`);
+            (next || $('cartPanel')).focus();
+        });
+        function checkout() {
+            const L = lines();
+            if (!L.length) return;
+            $('cartDoneList').innerHTML = L.map(l => `<li>• ${esc(l.p.name)} × ${l.qty} = ${money(l.p.price * l.qty)}</li>`).join('');
+            $('cartDoneTotal').textContent = money(L.reduce((s, l) => s + l.qty * l.p.price, 0));
+            cart = []; saveCart(); renderCart();
+            $('cartMain').hidden = true; $('cartDone').hidden = false;
+            $('cartDoneTitle').focus();
+        }
+        $('btnCart').addEventListener('click', e => openCart(e.currentTarget));
+        $('btnFloatCart').addEventListener('click', e => openCart(e.currentTarget));
+        $('btnStore').addEventListener('click', e => openStore(e.currentTarget));
+
+        // ---------- Calorie calculator (Mifflin-St Jeor) ----------
+        $('calcForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const sex = $('calcSex').value, act = parseFloat($('calcActivity').value), goal = $('calcGoal').value;
+            const age = parseFloat($('calcAge').value), h = parseFloat($('calcHeight').value), w = parseFloat($('calcWeight').value);
+            const out = $('calcResult'), errs = [];
+            if (!(age >= 15 && age <= 80)) errs.push('العمر يجب أن يكون بين 15 و80 سنة.');
+            if (!(h >= 120 && h <= 230)) errs.push('الطول يجب أن يكون بين 120 و230 سم.');
+            if (!(w >= 30 && w <= 250)) errs.push('الوزن يجب أن يكون بين 30 و250 كجم.');
+            out.hidden = false;
+            if (errs.length) {
+                out.className = 'p-4 bg-darkbg border border-red-500/50 rounded-xl text-center text-sm text-red-300 leading-loose';
+                out.innerHTML = errs.map(esc).join('<br>');
+                return;
+            }
+            const bmr = 10 * w + 6.25 * h - 5 * age + (sex === 'male' ? 5 : -161);
+            const tdee = bmr * act;
+            const floor = sex === 'male' ? 1500 : 1200;
+            let target = tdee + (goal === 'cut' ? -400 : goal === 'bulk' ? 300 : 0);
+            let note = '';
+            if (goal === 'cut' && target < floor) { target = floor; note = `<br><span class="text-xs text-gray-300">تم رفع الهدف إلى الحد الأدنى الآمن (${floor} سعرة).</span>`; }
+            out.className = 'p-4 bg-darkbg border border-gold/30 rounded-xl text-center text-sm text-gray-200 leading-loose';
+            out.innerHTML =
+                `معدل الحرق الأساسي (BMR): <b class="text-white">${Math.round(bmr)}</b> سعرة<br>` +
+                `للحفاظ على وزنك: <b class="text-white">${Math.round(tdee)}</b> سعرة<br>` +
+                `هدفك اليومي الموصى به: <span class="text-2xl font-black text-gold">${Math.round(target)}</span> سعرة/يوم 🎯${note}`;
+        });
+
+        // ---------- Counters ----------
+        function animateCounter(id, target) {
+            const el = $(id);
+            if (reduceMotion) { el.textContent = target; return; }
+            let c = 0;
+            const step = Math.max(1, Math.ceil(target / 40));
+            const t = setInterval(() => {
+                c = Math.min(c + step, target);
+                el.textContent = c;
+                if (c >= target) clearInterval(t);
+            }, 30);
+        }
+
+        // ---------- Init ----------
+        document.addEventListener('DOMContentLoaded', () => {
+            animateCounter('counter1', 650);
+            animateCounter('counter2', 18);
+            animateCounter('counter3', 12);
+            loadCart();
+            renderCart();
+        });
+    })();
+    </script>
+</body>
+</html>
